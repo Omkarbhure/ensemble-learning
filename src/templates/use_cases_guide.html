@@ -1,0 +1,32 @@
+<div class="usecase-container">
+    <div class="usecase-header">
+        <span class="usecase-icon">📋</span>
+        <div>
+            <div class="usecase-title">Supported Use Cases & Input Validation Rules</div>
+            <div class="usecase-subtitle">The ensemble is strictly calibrated for single MNIST-style handwritten digits.</div>
+        </div>
+    </div>
+    <div class="usecase-grid">
+        <div class="usecase-card valid-card">
+            <div class="card-status-title">
+                <span>✅ Supported Inputs</span>
+            </div>
+            <ul>
+                <li><strong>Single Digits (0 to 9)</strong>: Drawn clearly in the canvas.</li>
+                <li><strong>Scanned/Uploaded Digits</strong>: Clean PNG, JPG, or JPEG images.</li>
+                <li><strong>Centered Single Strokes</strong>: Clear handwriting with reasonable stroke width.</li>
+            </ul>
+        </div>
+        <div class="usecase-card invalid-card">
+            <div class="card-status-title">
+                <span>🚫 Rejected Inputs</span>
+            </div>
+            <ul>
+                <li><strong>Alphabets & Letters</strong> (e.g. A, B, C, X, Y, Z).</li>
+                <li><strong>Multi-digit Numbers</strong> (e.g. 10, 72, 999).</li>
+                <li><strong>Doodles, Symbols & Shapes</strong> (e.g. *, #, @, stars, faces).</li>
+                <li><strong>Complex Photos & Backgrounds</strong> (photos, icons, clipart).</li>
+            </ul>
+        </div>
+    </div>
+</div>

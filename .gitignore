@@ -1,0 +1,22 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+.env
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# ML Model Artifacts (Exceeds GitHub 100MB file limit; train via 'python src/train.py')
+models/*.pkl
+models/*.joblib
+!models/.gitkeep
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

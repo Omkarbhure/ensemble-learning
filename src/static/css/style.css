@@ -1,0 +1,210 @@
+/* ==========================================================================
+   Handwritten Digit Recognition Ensemble - Styling
+   ========================================================================== */
+
+/* Main Streamlit App Container */
+.stApp {
+    background-color: #0F172A;
+    color: #ffffff;
+}
+
+/* Header Typography */
+.main-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+    color: #FFD700;
+}
+
+.sub-title {
+    font-size: 1.05rem;
+    color: #64748B;
+    margin-bottom: 1.5rem;
+}
+
+/* Prediction Result Card */
+.prediction-box {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+    margin-bottom: 1rem;
+    box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
+}
+
+.prediction-label {
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+}
+
+.prediction-digit {
+    font-size: 4.5rem;
+    font-weight: 800;
+    line-height: 1;
+    margin: 0.5rem 0;
+}
+
+.confidence-badge {
+    font-size: 1.1rem;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    display: inline-block;
+}
+
+/* Individual Model Classifier Card */
+.model-card {
+    background: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 0.8rem;
+    text-align: center;
+}
+
+.model-name {
+    font-size: 0.75rem;
+    color: #94A3B8;
+}
+
+.model-digit {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #FFFFFF;
+}
+
+.model-confidence {
+    font-size: 0.75rem;
+    color: #10B981;
+}
+
+/* Restriction Warning Box */
+.restriction-box {
+    background: #FEF2F2;
+    border: 2px solid #EF4444;
+    border-radius: 12px;
+    padding: 1.5rem;
+    color: #991B1B;
+    margin-top: 1rem;
+}
+
+.restriction-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.restriction-divider {
+    border: 0;
+    border-top: 1px solid #FCA5A5;
+    margin: 10px 0;
+}
+
+/* Use Cases Guide Container */
+.usecase-container {
+    background: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+}
+
+.usecase-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+}
+
+.usecase-icon {
+    font-size: 1.8rem;
+}
+
+.usecase-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #F8FAFC;
+}
+
+.usecase-subtitle {
+    font-size: 0.85rem;
+    color: #94A3B8;
+}
+
+.usecase-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .usecase-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.usecase-card {
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.valid-card {
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.invalid-card {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.card-status-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+    color: #F1F5F9;
+}
+
+.usecase-card ul {
+    margin: 0;
+    padding-left: 1.2rem;
+    color: #CBD5E1;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+/* Validation Alert Box */
+.validation-alert-box {
+    background: #FEF2F2;
+    border: 2px solid #EF4444;
+    border-radius: 12px;
+    padding: 1.3rem;
+    color: #991B1B;
+    margin-top: 1rem;
+}
+
+.validation-alert-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.validation-alert-body p {
+    margin: 0.3rem 0;
+    font-size: 0.95rem;
+}
+
+.validation-tip {
+    margin-top: 0.6rem !important;
+    padding-top: 0.6rem;
+    border-top: 1px solid #FECACA;
+    color: #7F1D1D;
+}
+
