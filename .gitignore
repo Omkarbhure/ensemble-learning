@@ -10,13 +10,24 @@ __pycache__/
 *$py.class
 *.pyc
 
-# ML Model Artifacts (Exceeds GitHub 100MB file limit; train via 'python src/train.py')
+# ML Model Artifacts & Datasets (Build via 'python src/dataset_builder.py' and train via 'python src/train.py')
 models/*.pkl
 models/*.joblib
+models/*.npz
 !models/.gitkeep
+!models/benchmark_metrics.json
+
+# Large Full Datasets (>50MB; use dataset_preview.csv for inspection)
+data/dataset_*.csv
+!data/dataset_preview.csv
+
+# Temporary Caches & Scratch
+scratch/
+data_cache/
 
 # IDE and OS files
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+

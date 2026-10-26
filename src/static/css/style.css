@@ -208,3 +208,39 @@
     color: #7F1D1D;
 }
 
+/* Benchmark Metric Card */
+.bench-card {
+    background: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 1.2rem;
+    text-align: center;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+.bench-card-highlight {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+    border: 1.5px solid #818CF8;
+    box-shadow: 0 8px 20px -4px rgba(99, 102, 241, 0.4);
+}
+
+.bench-title {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: #94A3B8;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.bench-val {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin: 0.4rem 0;
+    color: #38BDF8;
+}
+
+.bench-sub {
+    font-size: 0.8rem;
+    color: #CBD5E1;
+}
+

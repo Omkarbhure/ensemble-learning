@@ -6,6 +6,7 @@ import scipy.ndimage
 def analyze_image_properties(image):
     """
     Extract geometric, topological, and stroke properties of the input image.
+    Supports single digits (0-9), alphabets (A-Z), and symbols (+, -, *, /, =, ?, !).
     """
     if isinstance(image, np.ndarray):
         if image.dtype != np.uint8 and np.max(image) <= 1.0:
@@ -38,7 +39,7 @@ def analyze_image_properties(image):
     ink_pixel_count = int(np.sum(binary))
 
     bbox = image.getbbox()
-    if bbox is None or ink_pixel_count < 25:
+    if bbox is None or ink_pixel_count < 20:
         return {
             "is_empty": True,
             "ink_pixel_count": ink_pixel_count,
@@ -56,23 +57,35 @@ def analyze_image_properties(image):
     dilated = scipy.ndimage.binary_dilation(binary, structure=structure)
     labeled, num_components = scipy.ndimage.label(dilated)
 
-    # Holes / loops detection (Euler number analysis via inverted background)
-    # Digits have at most 2 closed holes (e.g. '8' has 2, '0','6','9','4' have 1, others have 0)
-    cropped_binary = binary[bbox[1]:bbox[3], bbox[0]:bbox[2]]
-    # Pad cropped binary with zeros to ensure background is connected
-    padded = np.pad(cropped_binary, pad_width=2, mode='constant', constant_values=0)
-    inv_padded = (padded == 0).astype(np.uint8)
-    _, num_bg_regions = scipy.ndimage.label(inv_padded)
-    # Background minus the outer border region gives internal holes
-    holes_count = max(0, num_bg_regions - 1)
-
     # Aspect ratio
     aspect_ratio = total_w / max(1, total_h)
 
-    # Edge density / complexity (to detect complex photos/drawings)
-    dx = np.diff(img_array.astype(float), axis=1)
-    dy = np.diff(img_array.astype(float), axis=0)
-    edge_energy = float(np.mean(np.abs(dx)) + np.mean(np.abs(dy)))
+    # Check horizontal distribution of components (to detect multi-character strings like "AB" or "12")
+    components = []
+    min_area = (total_w * total_h) * 0.03
+    for i in range(1, num_components + 1):
+        mask = (labeled == i)
+        area = np.sum(mask)
+        if area >= max(25, min_area):
+            y_indices, x_indices = np.where(mask)
+            components.append({
+                "x_min": int(np.min(x_indices)),
+                "x_max": int(np.max(x_indices)),
+                "w": int(np.max(x_indices) - np.min(x_indices)),
+                "h": int(np.max(y_indices) - np.min(y_indices)),
+            })
+
+    # Sort components left to right
+    components = sorted(components, key=lambda c: c["x_min"])
+    distinct_horizontal = 1
+    if len(components) >= 2:
+        last_c = components[0]
+        for c in components[1:]:
+            overlap_x = max(0, min(last_c["x_max"], c["x_max"]) - max(last_c["x_min"], c["x_min"]))
+            min_w = min(last_c["w"], c["w"])
+            if overlap_x < min_w * 0.20:
+                distinct_horizontal += 1
+                last_c = c
 
     return {
         "is_empty": False,
@@ -84,130 +97,18 @@ def analyze_image_properties(image):
         "aspect_ratio": aspect_ratio,
         "fill_ratio": fill_ratio,
         "num_components": num_components,
-        "holes_count": holes_count,
-        "edge_energy": edge_energy,
-        "binary": binary,
-        "cropped_binary": cropped_binary,
+        "distinct_horizontal": distinct_horizontal,
     }
-
-
-def detect_alphabet_patterns(crop):
-    """
-    Detect explicit structural patterns of common alphabet letters (e.g., B, D, E, F, H, T, A, K, X).
-    Returns (is_alphabet: bool, letter_name: str, explanation: str)
-    """
-    h, w = crop.shape
-    if h < 20 or w < 10:
-        return False, "", ""
-
-    # Extract vertical left and right profiles
-    left_profile, right_profile = [], []
-    for y in range(int(h * 0.08), int(h * 0.92)):
-        row = np.where(crop[y, :])[0]
-        if len(row) > 0:
-            left_profile.append(row[0])
-            right_profile.append(row[-1])
-
-    if len(left_profile) < 10:
-        return False, "", ""
-
-    left_profile = np.array(left_profile)
-    right_profile = np.array(right_profile)
-    n = len(left_profile)
-
-    # Vertical linearity of the left side
-    y_vals = np.arange(n)
-    slope_l, intercept_l = np.polyfit(y_vals, left_profile, 1)
-    res_left = np.mean(np.abs(left_profile - (slope_l * y_vals + intercept_l)))
-    left_span = np.max(left_profile) - np.min(left_profile)
-
-    mid_start, mid_end = int(n * 0.35), int(n * 0.65)
-    left_waist_indent = np.mean(left_profile[mid_start:mid_end]) - np.mean(
-        np.concatenate([left_profile[:int(n * 0.25)], left_profile[int(n * 0.75):]])
-    )
-    right_waist_indent = np.mean(
-        np.concatenate([right_profile[:int(n * 0.25)], right_profile[int(n * 0.75):]])
-    ) - np.mean(right_profile[mid_start:mid_end])
-
-    # 1. Letter 'B' Check
-    # (Straight vertical left spine + double right lobes with middle indentation)
-    top_span = np.max(right_profile[:int(n * 0.45)] - left_profile[:int(n * 0.45)])
-    bot_span = np.max(right_profile[int(n * 0.55):] - left_profile[int(n * 0.55):])
-    if top_span > w * 0.55 and bot_span > w * 0.55:
-        if (res_left < w * 0.09 or left_span < w * 0.18) and right_waist_indent > w * 0.06:
-            if left_waist_indent < max(2.0, right_waist_indent * 0.35):
-                return (
-                    True,
-                    "Alphabet Letter 'B'",
-                    "Detected a straight vertical left spine with double right lobes characteristic of the letter 'B'. Only single digits (0–9) are allowed.",
-                )
-
-    # 2. Letter 'D' Check
-    # (Straight vertical left spine + single rounded right bulge with no top/bottom gaps)
-    if (res_left < w * 0.08 or left_span < w * 0.14) and (np.max(right_profile) - np.min(right_profile) > w * 0.15):
-        right_bulge = np.mean(right_profile[mid_start:mid_end]) - np.mean(
-            np.concatenate([right_profile[:int(n * 0.20)], right_profile[int(n * 0.80):]])
-        )
-        if right_bulge > w * 0.08:
-            return (
-                True,
-                "Alphabet Letter 'D'",
-                "Detected a straight vertical left spine with a rounded right boundary characteristic of the letter 'D'.",
-            )
-
-    # 3. Letter 'T' Check
-    # (Full-width horizontal top crossbar with a centered vertical stem)
-    top_w = np.sum(crop[:int(h * 0.25), :] > 0, axis=1).max()
-    bot_w = np.sum(crop[int(h * 0.50):, :] > 0, axis=1).mean()
-    if top_w > w * 0.85 and bot_w < w * 0.35:
-        stem_cols = np.where(np.sum(crop[int(h * 0.40):, :], axis=0) > 0)[0]
-        if len(stem_cols) > 0 and (stem_cols.min() > w * 0.20 and stem_cols.max() < w * 0.80):
-            return (
-                True,
-                "Alphabet Letter 'T'",
-                "Detected a top horizontal crossbar and centered stem characteristic of the letter 'T'.",
-            )
-
-    # 4. Letter 'H' Check
-    # (Two vertical parallel uprights connected by a central horizontal crossbar, with open top and bottom gaps)
-    left_col_density = np.sum(crop[:, :int(w * 0.25)]) / (h * int(w * 0.25))
-    right_col_density = np.sum(crop[:, -int(w * 0.25):]) / (h * int(w * 0.25))
-    top_mid_density = np.sum(crop[:int(h * 0.35), int(w * 0.35):int(w * 0.65)]) / (int(h * 0.35) * int(w * 0.30))
-    bot_mid_density = np.sum(crop[int(h * 0.65):, int(w * 0.35):int(w * 0.65)]) / (int(h * 0.35) * int(w * 0.30))
-    if left_col_density > 0.25 and right_col_density > 0.25 and top_mid_density < 0.08 and bot_mid_density < 0.08:
-        return (
-            True,
-            "Alphabet Letter 'H'",
-            "Detected dual parallel uprights with open top/bottom gaps characteristic of the letter 'H'.",
-        )
-
-    # 5. Letter 'A' Check
-    # (Triangular apex + horizontal crossbar + open bottom between two legs)
-    apex_span = np.max(right_profile[:int(n * 0.18)] - left_profile[:int(n * 0.18)])
-    base_span = np.max(right_profile[int(n * 0.80):] - left_profile[int(n * 0.80):])
-    if apex_span < w * 0.35 and base_span > w * 0.75:
-        # Check crossbar in middle and gap at bottom
-        mid_row_sum = np.sum(crop[int(h * 0.45):int(h * 0.60), :] > 0, axis=1).max()
-        bot_center_density = np.sum(crop[int(h * 0.75):, int(w * 0.35):int(w * 0.65)]) / (int(h * 0.25) * int(w * 0.30))
-        if mid_row_sum > w * 0.45 and bot_center_density < 0.15:
-            return (
-                True,
-                "Alphabet Letter 'A'",
-                "Detected a triangular apex, horizontal crossbar, and bifurcated base characteristic of the letter 'A'.",
-            )
-
-    return False, "", ""
 
 
 def validate_digit_input(image, ensemble_pred=None):
     """
-    Validate that the input image is strictly a single valid digit (0-9).
+    Validate that the input is a single character (digit, alphabet, or symbol).
     Rejects:
       - Empty canvas / blanks
-      - Multi-digit inputs (e.g. '10', '99')
-      - Alphabets / Text letters (e.g. 'A', 'B', 'D', 'H', 'T', 'X')
-      - Non-digit drawings / complex scribbles / shapes / geometric figures
-      - Photos / cluttered images
+      - Multi-character sequences (e.g. '10', 'AB', '++')
+      - Non-drawing graphics or photos (solid blocks, photographic textures)
+      - Unrecognizable scribbles (extreme low confidence)
 
     Returns:
       (is_valid: bool, error_type: str, title: str, description: str)
@@ -220,89 +121,47 @@ def validate_digit_input(image, ensemble_pred=None):
             False,
             "EMPTY_INPUT",
             "Empty Input Detected",
-            "The canvas or uploaded image is blank. Please draw a single digit (0–9) or upload an image containing a digit.",
+            "The canvas or uploaded image is blank. Please draw a single character (digit 0–9, letter A–Z, or symbol +, -, *, /, =, ?, !) or upload an image.",
         )
 
     # 2. Check for solid blocks / excessive ink / photo clutter
-    if props["fill_ratio"] > 0.78 and props["ink_pixel_count"] > 3000:
+    if props["fill_ratio"] > 0.82 and props["ink_pixel_count"] > 4000:
         return (
             False,
             "SOLID_OR_PHOTO",
-            "Non-Digit Graphic or Photo Detected",
-            "The input has excessive solid coverage or photo texture. Only clean, single handwritten digit strokes are supported.",
+            "Graphic or Photo Detected",
+            "The input has excessive solid coverage or photo texture. Please draw or upload clean handwritten character strokes.",
         )
 
-    # 3. Check for too many disconnected strokes/letters (e.g. words or complex scribbles)
-    if props["num_components"] >= 5:
+    # 3. Check for multiple distinct side-by-side characters
+    if props.get("distinct_horizontal", 1) >= 2 and props["width"] > 70 and props["aspect_ratio"] > 1.6:
         return (
             False,
-            "COMPLEX_DRAWING",
-            "Complex Drawing or Multiple Characters Detected",
-            f"Detected {props['num_components']} disconnected parts. Please draw only ONE single digit with connected or standard strokes.",
+            "MULTI_CHARACTER",
+            "Multiple Characters Detected",
+            "Detected multiple side-by-side characters (e.g., multi-digit numbers or words). Please draw only ONE single character or symbol at a time.",
         )
 
-    # 4. Check for excessive closed loops (> 2 holes is invalid for single digits)
-    # Digits have at most 2 holes ('8'). Letters/drawings like '%', '&', complex shapes often have 3+
-    if props["holes_count"] >= 3:
+    # 4. Check for extreme clutter / scribbles (> 6 disconnected stroke fragments)
+    if props["num_components"] > 6:
         return (
             False,
-            "INVALID_TOPOLOGY",
-            "Non-Digit Symbol or Shape Detected",
-            f"The drawing contains {props['holes_count']} enclosed loops. Single digits (0–9) have at most 2 loops (e.g., '8').",
+            "COMPLEX_SCRIBBLE",
+            "Complex Scribble Detected",
+            f"Detected {props['num_components']} disconnected stroke fragments. Please draw a single clean character or symbol.",
         )
 
-    # 5. Check for extreme aspect ratio (wide multi-digits like '72', '10')
-    if props["aspect_ratio"] > 1.45 and props["width"] > 60:
-        return (
-            False,
-            "MULTI_DIGIT",
-            "Multi-Digit Number Detected",
-            "Detected a wide aspect ratio typical of multi-digit numbers (like 10, 72, 99). Only single digits (0–9) are supported.",
-        )
-
-    # 6. Explicit Alphabet Geometric Pattern Recognition (B, D, E, F, H, T, A, etc.)
-    if "cropped_binary" in props:
-        is_alpha, alpha_title, alpha_desc = detect_alphabet_patterns(props["cropped_binary"])
-        if is_alpha:
-            return (
-                False,
-                "ALPHABET_DETECTED",
-                f"Alphabet Letter Detected ({alpha_title})",
-                alpha_desc,
-            )
-
-    # 7. Ensemble Consensus & Out-of-Distribution (OOD) Validation
+    # 5. Out-of-Distribution (OOD) Validation with Model Probabilities
     if ensemble_pred is not None:
         confidence = ensemble_pred.get("confidence", 0.0)
-        probabilities = ensemble_pred.get("probabilities", [])
-        individual_preds = ensemble_pred.get("individual_preds", {})
 
-        votes = [v["digit"] for v in individual_preds.values() if "digit" in v]
-        unique_votes = set(votes)
+        # Confidence sanity threshold for 43 classes (random guessing = 1/43 ≈ 2.3%)
+        if confidence < 0.16:
+            return (
+                False,
+                "LOW_CONFIDENCE",
+                "Unrecognized Drawing",
+                f"The ensemble confidence ({confidence*100:.1f}%) is too low. Please draw a clearer single digit (0–9), letter (A–Z), or symbol (+, -, *, /, =, ?, !).",
+            )
 
-        # Probabilities margin analysis
-        if len(probabilities) > 0:
-            sorted_probs = sorted(probabilities, reverse=True)
-            top1_prob = sorted_probs[0]
-            top2_prob = sorted_probs[1] if len(sorted_probs) > 1 else 0.0
-            margin = top1_prob - top2_prob
-
-            # Ambiguous input or classifier divergence (common for alphabets like A, M, K, X, doodles)
-            if top1_prob < 0.45 and (len(unique_votes) >= 2 or margin < 0.12):
-                return (
-                    False,
-                    "OOD_NON_DIGIT",
-                    "Unrecognized / Non-Digit Input Detected",
-                    "The model cannot identify a clear handwritten digit (0–9). Non-digit characters (like alphabet letters A-Z, symbols, or doodles) are not supported.",
-                )
-
-            # Strict lower confidence bound
-            if confidence < 0.40:
-                return (
-                    False,
-                    "LOW_CONFIDENCE",
-                    "Ambiguous Non-Digit Drawing",
-                    f"Prediction confidence ({confidence*100:.1f}%) is too low to match a valid digit. Please draw a clear, single digit (0–9).",
-                )
-
-    return (True, "VALID", "Valid Digit", "Input is a valid single digit.")
+    return (True, "VALID", "Valid Character", "Input is a valid single character or symbol.")
