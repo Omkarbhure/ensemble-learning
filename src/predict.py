@@ -11,7 +11,7 @@ if CURRENT_DIR not in sys.path:
 
 import disambiguation
 importlib.reload(disambiguation)
-from disambiguation import disambiguate_homoglyphs
+from disambiguation import disambiguate_homoglyphs, is_five_pointed_star
 from preprocessing import preprocess_image
 
 BASE_DIR = os.path.dirname(CURRENT_DIR)
@@ -61,13 +61,24 @@ SPECIAL_SYMBOLS_SET = {"+", "-", "*", "/", "=", "?", "!", "#", "@", "$", "%", "&
 
 
 def get_character_category(char_str: str) -> str:
-    """Return descriptive category for a predicted character."""
+    """Return concise category for a predicted character: Alphabet, Digit, or Symbol."""
     if char_str.isdigit():
-        return "Digit (0–9)"
+        return "Digit"
     elif "/" in char_str or char_str.isalpha():
-        return "Alphabet (Capital & Small)"
+        return "Alphabet"
     elif char_str in SPECIAL_SYMBOLS_SET:
-        return "Math & Special Symbol"
+        return "Symbol"
+    return "Character"
+
+
+def get_character_category_detail(char_str: str) -> str:
+    """Return descriptive badge with icon."""
+    if char_str.isdigit():
+        return "🔢 Digit (0–9)"
+    elif "/" in char_str or char_str.isalpha():
+        return "🔤 Alphabet (A–Z / a–z)"
+    elif char_str in SPECIAL_SYMBOLS_SET:
+        return "➕ Math & Special Symbol"
     return "Character"
 
 
@@ -165,25 +176,56 @@ def predict_digit(image, weights=None, voting_mode="soft"):
         raw_prediction = int(model.predict(processed_image)[0])
         probabilities = model.predict_proba(processed_image)[0]
 
-    # Refine ambiguous homoglyphs (e.g. B vs 8, D vs 0, 6 vs 0, ! vs 1, P vs 9)
-    refined_prediction = disambiguate_homoglyphs(raw_prediction, probabilities, image, LABEL_MAP)
+    # 0. Check for 5-pointed star:
+    # Users drawing the math symbol '*' (star) frequently draw a 5-pointed star (★ / pentagram).
+    if is_five_pointed_star(image):
+        star_class = 38  # Class 38 is '*'
+        star_probs = np.full_like(probabilities, 0.14 / (len(probabilities) - 1))
+        star_probs[star_class] = 0.86
+        probabilities = star_probs
+        raw_prediction = star_class
+        refined_prediction = star_class
+        for k in individual_preds:
+            individual_preds[k]["digit"] = "*"
+            individual_preds[k]["category"] = "Symbol"
+            individual_preds[k]["confidence"] = 0.86
+    else:
+        # 1. Algorithm Consensus Determination
+        # If the base classifiers agree (majority >= 2), or if there is a decisive probability margin,
+        # we strictly respect the algorithms' prediction without heuristic tampering.
+        classes_voted = list(base_classes.values()) if base_classes else []
+        majority_count = max([classes_voted.count(c) for c in set(classes_voted)]) if classes_voted else 0
 
-    if refined_prediction != raw_prediction:
-        # Boost refined candidate so probabilities and confidence match morphological truth
-        raw_prob = float(probabilities[raw_prediction])
-        probabilities = probabilities.copy()
-        probabilities[refined_prediction] = max(raw_prob, 0.72)
-        probabilities[raw_prediction] = min(float(probabilities[raw_prediction]), 0.12)
-        probabilities = probabilities / np.sum(probabilities)
+        sorted_indices = np.argsort(probabilities)[::-1]
+        top1_idx = int(sorted_indices[0])
+        top2_idx = int(sorted_indices[1]) if len(sorted_indices) > 1 else top1_idx
+        prob_margin = float(probabilities[top1_idx] - probabilities[top2_idx])
+
+        has_algorithm_consensus = (
+            majority_count >= 2
+            or prob_margin >= 0.12
+            or probabilities[raw_prediction] >= 0.35
+        )
+
+        if has_algorithm_consensus:
+            refined_prediction = raw_prediction
+        else:
+            # Only use morphological disambiguation as an edge-case tie-breaker for ambiguous pairs
+            refined_prediction = disambiguate_homoglyphs(raw_prediction, probabilities, image, LABEL_MAP)
 
     confidence = float(probabilities[refined_prediction])
-
     predicted_label = LABEL_MAP.get(refined_prediction, str(refined_prediction))
     category = get_character_category(predicted_label)
 
-    # Extract Top-5 predictions with refined candidate on top
-    top_5_indices = [idx for idx in np.argsort(probabilities)[::-1] if idx != refined_prediction][:4]
-    top_5_indices = [refined_prediction] + top_5_indices
+    # Extract Top-5 predictions with predicted candidate on top
+    sorted_indices = np.argsort(probabilities)[::-1]
+    top_5_indices = list(sorted_indices[:5])
+    if refined_prediction not in top_5_indices:
+        top_5_indices = [refined_prediction] + top_5_indices[:4]
+    elif top_5_indices[0] != refined_prediction:
+        top_5_indices.remove(refined_prediction)
+        top_5_indices = [refined_prediction] + top_5_indices[:4]
+
     top_candidates = [
         (LABEL_MAP.get(idx, str(idx)), float(probabilities[idx]))
         for idx in top_5_indices

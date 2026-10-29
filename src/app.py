@@ -182,6 +182,8 @@ if model_ready:
                         if img_data is not None and np.max(img_data[:, :, :3]) > 20:
                             selected_image = Image.fromarray(img_data.astype("uint8"), "RGBA")
                             input_source = "Drawn Canvas"
+                            if "active_sample" in st.session_state:
+                                del st.session_state["active_sample"]
                     except Exception:
                         pass
 
@@ -195,6 +197,8 @@ if model_ready:
             if uploaded_file is not None:
                 selected_image = Image.open(uploaded_file)
                 input_source = "Uploaded Image"
+                if "active_sample" in st.session_state:
+                    del st.session_state["active_sample"]
 
         # --- Sub-tab 3: Test Samples ---
         with tab_samples:
@@ -259,7 +263,8 @@ if model_ready:
             s_cols = st.columns(len(sample_symbols))
             for i, s in enumerate(sample_symbols):
                 with s_cols[i]:
-                    if st.button(f"**{s}**", key=f"sample_symbol_{i}", use_container_width=True):
+                    btn_label = f"**\\***" if s == "*" else f"**{s}**"
+                    if st.button(btn_label, key=f"sample_symbol_{i}", use_container_width=True):
                         img = Image.new("L", (140, 140), 0)
                         draw = ImageDraw.Draw(img)
                         try:
@@ -272,7 +277,7 @@ if model_ready:
                         st.session_state["active_sample"] = img
                         st.session_state["sample_label"] = f"Symbol '{s}'"
 
-            if "active_sample" in st.session_state and tab_samples:
+            if "active_sample" in st.session_state and selected_image is None:
                 selected_image = st.session_state["active_sample"]
                 input_source = st.session_state.get("sample_label", "Sample Image")
 
@@ -328,10 +333,16 @@ if model_ready:
 
                     with col_pred:
                         st.subheader("🎯 Ensemble Result")
+                        cat_upper = category.upper()
+                        cat_lower = category.lower()
+                        cat_detail = "🔤 Alphabet Letter (A–Z / a–z)" if category == "Alphabet" else ("🔢 Single Digit (0–9)" if category == "Digit" else "➕ Math & Special Symbol")
                         render_template(
                             "prediction_box.html",
                             digit=predicted_label,
-                            category=category,
+                            category=cat_upper,
+                            category_upper=cat_upper,
+                            category_lower=cat_lower,
+                            category_detail=cat_detail,
                             confidence=confidence * 100,
                         )
 
@@ -350,6 +361,7 @@ if model_ready:
                                             name=names[k],
                                             digit=item["digit"],
                                             confidence=item["confidence"] * 100,
+                                            category=item.get("category", ""),
                                         )
 
                     with col_prob:

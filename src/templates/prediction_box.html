@@ -1,5 +1,6 @@
-<div class="prediction-box">
-    <div class="prediction-label">Predicted {category}</div>
+<div class="prediction-box prediction-box-{category_lower}">
+    <div class="prediction-label">PREDICTED {category_upper}</div>
     <div class="prediction-digit">{digit}</div>
     <div class="confidence-badge">Confidence: {confidence:.1f}%</div>
+    <div class="category-subtext">{category_detail}</div>
 </div>

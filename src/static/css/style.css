@@ -24,19 +24,44 @@
 
 /* Prediction Result Card */
 .prediction-box {
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
     color: white;
     padding: 1.5rem;
     border-radius: 12px;
     text-align: center;
     margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+/* Category-specific dynamic styling */
+.prediction-box-alphabet {
+    background: linear-gradient(135deg, #059669 0%, #0d9488 50%, #4338ca 100%);
+    box-shadow: 0 10px 22px -3px rgba(16, 185, 129, 0.4);
+    border: 1.5px solid rgba(52, 211, 153, 0.4);
+}
+
+.prediction-box-digit {
+    background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 50%, #7c3aed 100%);
+    box-shadow: 0 10px 22px -3px rgba(79, 70, 229, 0.4);
+    border: 1.5px solid rgba(129, 140, 248, 0.4);
+}
+
+.prediction-box-symbol {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 50%, #7c2d12 100%);
+    box-shadow: 0 10px 22px -3px rgba(245, 158, 11, 0.4);
+    border: 1.5px solid rgba(251, 191, 36, 0.4);
+}
+
+.prediction-box-character {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
     box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
 }
 
 .prediction-label {
     text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 1px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    margin-bottom: 0.2rem;
 }
 
 .prediction-digit {
@@ -52,6 +77,16 @@
     padding: 0.3rem 0.8rem;
     border-radius: 20px;
     display: inline-block;
+    font-weight: 600;
+}
+
+.category-subtext {
+    font-size: 0.85rem;
+    color: #e2e8f0;
+    margin-top: 0.6rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    opacity: 0.95;
 }
 
 /* Individual Model Classifier Card */
@@ -77,6 +112,15 @@
 .model-confidence {
     font-size: 0.75rem;
     color: #10B981;
+}
+
+.model-category {
+    font-size: 0.68rem;
+    color: #38BDF8;
+    margin-top: 0.25rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
 }
 
 /* Restriction Warning Box */

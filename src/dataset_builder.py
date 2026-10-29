@@ -208,12 +208,37 @@ def generate_procedural_symbol(sym, canvas_size=(64, 64)):
         draw.line([(cx - arm * tilt, cy + arm), (cx + arm * tilt, cy - arm)], fill=255, width=stroke)
 
     elif sym == "*":
-        arm = random.randint(12, 20)
-        draw.line([(cx - arm, cy), (cx + arm, cy)], fill=255, width=stroke)
-        draw.line([(cx - arm * 0.7, cy - arm * 0.7), (cx + arm * 0.7, cy + arm * 0.7)], fill=255, width=stroke)
-        draw.line([(cx - arm * 0.7, cy + arm * 0.7), (cx + arm * 0.7, cy - arm * 0.7)], fill=255, width=stroke)
-        if random.random() > 0.5:
-            draw.line([(cx, cy - arm), (cx, cy + arm)], fill=255, width=stroke)
+        if random.random() < 0.65:
+            # 5-pointed star (how humans draw star *)
+            r_outer = random.randint(14, 24)
+            if random.random() < 0.5:
+                # 5-pointed outer star polygon
+                r_inner = r_outer * random.uniform(0.38, 0.52)
+                points = []
+                rot = random.uniform(-0.20, 0.20)
+                for i in range(10):
+                    r = r_outer if i % 2 == 0 else r_inner
+                    angle = (i * np.pi / 5.0) - (np.pi / 2.0) + rot
+                    points.append((cx + r * np.cos(angle), cy + r * np.sin(angle)))
+                draw.polygon(points, outline=255, fill=(255 if random.random() < 0.25 else 0), width=stroke)
+            else:
+                # 5-pointed continuous stroke star (pentagram)
+                rot = random.uniform(-0.20, 0.20)
+                v = []
+                for i in range(5):
+                    angle = (i * 2.0 * np.pi / 5.0) - (np.pi / 2.0) + rot
+                    v.append((cx + r_outer * np.cos(angle), cy + r_outer * np.sin(angle)))
+                order = [0, 2, 4, 1, 3, 0]
+                for idx in range(len(order) - 1):
+                    draw.line([v[order[idx]], v[order[idx+1]]], fill=255, width=stroke)
+        else:
+            # Asterisk cross (radial rays)
+            arm = random.randint(12, 20)
+            draw.line([(cx - arm, cy), (cx + arm, cy)], fill=255, width=stroke)
+            draw.line([(cx - arm * 0.7, cy - arm * 0.7), (cx + arm * 0.7, cy + arm * 0.7)], fill=255, width=stroke)
+            draw.line([(cx - arm * 0.7, cy + arm * 0.7), (cx + arm * 0.7, cy - arm * 0.7)], fill=255, width=stroke)
+            if random.random() > 0.5:
+                draw.line([(cx, cy - arm), (cx, cy + arm)], fill=255, width=stroke)
 
     elif sym == "!":
         arm = random.randint(16, 24)
